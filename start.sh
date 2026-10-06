@@ -1,10 +1,6 @@
 #!/bin/bash
 set -e
 
-echo ${AZP_URL}
-echo ${AZP_TOKEN}
-echo ${AZP_POOL}
-
 # AZP_URL control
 if [ -z "${AZP_URL}" ]; then
   echo 1>&2 "error: missing AZP_URL environment variable"
@@ -24,9 +20,8 @@ if [ -z "${AZP_POOL}" ]; then
 fi
 
 
-if [ -n "${AZP_WORK}" ]; then
-  mkdir -p "${AZP_WORK}"
-fi
+AZP_WORK="${AZP_WORK:-/azp/_work}"
+mkdir -p "${AZP_WORK}"
 
 cleanup() {
   trap "" EXIT
