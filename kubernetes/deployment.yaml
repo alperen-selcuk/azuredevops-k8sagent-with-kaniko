@@ -18,16 +18,35 @@ spec:
       labels:
         app: azagent
     spec:
+      serviceAccountName: azagent
+      automountServiceAccountToken: true
+      # give start.sh time to unregister the agent from Azure DevOps
+      terminationGracePeriodSeconds: 120
       containers:
-      - env:
+      - name: azagent-container
+        image: yourregistry/yourimage:<tag> # replace with your own image
+        imagePullPolicy: Always
+        env:
         - name: AGENT_ALLOW_RUNASROOT
           value: "true"
+        - name: AZP_WORK
+          value: /azp/_work
         envFrom:
         - secretRef:
             name: azdevops
-        image: hasanalperen/azuredevopsagent:v1.0
-        imagePullPolicy: IfNotPresent
-        name: azagent-container
+        # kaniko builds run in userspace and need root, but not privileged mode
         securityContext:
-          privileged: true
           runAsUser: 0
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: "2"
+            memory: 4Gi
+        volumeMounts:
+        - name: work
+          mountPath: /azp/_work
+      volumes:
+      - name: work
+        emptyDir: {}
