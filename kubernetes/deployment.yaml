@@ -24,7 +24,7 @@ spec:
       terminationGracePeriodSeconds: 120
       containers:
       - name: azagent-container
-        image: hasanalperen/azkubernetesagent # pin a tag in production
+        image: yourregistry/yourimage:<tag> # replace with your own image
         imagePullPolicy: Always
         env:
         - name: AGENT_ALLOW_RUNASROOT
