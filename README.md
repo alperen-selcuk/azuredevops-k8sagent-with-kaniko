@@ -19,6 +19,17 @@ docker push yourregistry/yourimage:<tag>
 
 Arm64 için: `--build-arg K8S_ARCH=arm64` ve `start.sh` içindeki `TARGETARCH=linux-arm64`.
 
+Sürümler opsiyonel build-arg'larla pinlenir; verilmezse hepsi **latest** gelir:
+
+```bash
+docker build \
+  --build-arg RUNNER_VERSION=4.x.y \
+  --build-arg KUBECTL_VERSION=v1.x.y \
+  --build-arg KANIKO_VERSION=v1.x.y \
+  --build-arg HELM_VERSION=v3.x.y \
+  -t yourregistry/yourimage:<tag> .
+```
+
 Sonra [kubernetes/deployment.yaml](kubernetes/deployment.yaml) içindeki `image` alanını güncelle:
 
 ```yaml
@@ -51,6 +62,17 @@ kubectl apply -f kubernetes/deployment.yaml
 Birkaç dakika içinde agent'lar pool'da **Online** görünür.
 
 > `rbac.yaml` agent'a tüm namespace'lerde `edit` yetkisi verir. Daha dar yetki için dosyadaki ClusterRoleBinding'i RoleBinding'e çevir.
+
+### 5. (Opsiyonel) Helm repo
+
+Pod her başladığında / restart olduğunda `HELM_REPO_NAME` ve `HELM_REPO_URL` env'leri varsa `helm repo add` + `helm repo update` çalışır. Env yoksa hiçbir şey yapılmaz.
+
+| Env | Zorunlu | Açıklama |
+|---|---|---|
+| `HELM_REPO_NAME` | evet | Repo adı (örn. `chartmuseum`) |
+| `HELM_REPO_URL` | evet | Repo URL'i |
+| `HELM_REPO_USERNAME` | hayır | Auth açıksa |
+| `HELM_REPO_PASSWORD` | hayır | Auth açıksa (Secret'tan ver) |
 
 ## Pipeline'da kullanım
 

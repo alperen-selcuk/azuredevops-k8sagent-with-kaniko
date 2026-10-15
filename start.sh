@@ -45,7 +45,23 @@ print_header() {
   echo -e "\n${lightcyan}$1${nocolor}\n"
 }
 
-export VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
+export VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE,HELM_REPO_PASSWORD"
+
+# Optional: register a (private) helm repo on every container start.
+# HELM_REPO_NAME + HELM_REPO_URL are required; HELM_REPO_USERNAME / HELM_REPO_PASSWORD are optional.
+if [ -n "${HELM_REPO_NAME}" ] && [ -n "${HELM_REPO_URL}" ]; then
+  print_header "0. Adding helm repo ${HELM_REPO_NAME}..."
+  if [ -n "${HELM_REPO_USERNAME}" ]; then
+    printf '%s' "${HELM_REPO_PASSWORD}" | helm repo add "${HELM_REPO_NAME}" "${HELM_REPO_URL}" \
+      --username "${HELM_REPO_USERNAME}" --password-stdin --force-update \
+      && helm repo update "${HELM_REPO_NAME}" \
+      || echo 1>&2 "warning: could not add/update helm repo ${HELM_REPO_NAME}"
+  else
+    helm repo add "${HELM_REPO_NAME}" "${HELM_REPO_URL}" --force-update \
+      && helm repo update "${HELM_REPO_NAME}" \
+      || echo 1>&2 "warning: could not add/update helm repo ${HELM_REPO_NAME}"
+  fi
+fi
 
 print_header "1. Determining matching Azure Pipelines agent..."
 
