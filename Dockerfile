@@ -1,12 +1,19 @@
+# Kaniko tag: "latest" unless overridden with --build-arg KANIKO_VERSION=v1.x.y
+ARG KANIKO_VERSION=latest
+FROM gcr.io/kaniko-project/executor:${KANIKO_VERSION} AS kaniko
+
 FROM ubuntu:22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Architecture used for kubectl / helm downloads: amd64 | arm64
 ARG K8S_ARCH=amd64
-# Leave KUBECTL_VERSION empty to use the latest stable release
+# Leave empty to use the latest release; set to pin a version (e.g. v1.x.y / v3.x.y)
 ARG KUBECTL_VERSION=""
-ARG HELM_VERSION=v3.16.4
+ARG HELM_VERSION=""
+# Leave empty to use the latest Azure Pipelines agent; set to pin (e.g. 4.x.y)
+ARG RUNNER_VERSION=""
+ENV AZP_AGENT_VERSION=${RUNNER_VERSION}
 
 RUN apt-get update && \
     apt-get upgrade -y && \
@@ -48,7 +55,8 @@ RUN set -eux; \
 
 # Install helm
 RUN set -eux; \
-    curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-${K8S_ARCH}.tar.gz" | tar -xz -C /tmp; \
+    h="${HELM_VERSION:-$(curl -fsSL https://get.helm.sh/helm-latest-version)}"; \
+    curl -fsSL "https://get.helm.sh/helm-${h}-linux-${K8S_ARCH}.tar.gz" | tar -xz -C /tmp; \
     mv "/tmp/linux-${K8S_ARCH}/helm" /usr/local/bin/helm; \
     rm -rf "/tmp/linux-${K8S_ARCH}"; \
     kubectl version --client; helm version
@@ -69,11 +77,11 @@ ENV DOCKER_CONFIG=/kaniko/.docker/
 ENV DOCKER_CREDENTIAL_GCR_CONFIG=/kaniko/.config/gcloud/docker_credential_gcr_config.json
 
 # Copy Needed Files from Kaniko Image
-COPY --from=gcr.io/kaniko-project/executor /kaniko/executor /kaniko/executor
-COPY --from=gcr.io/kaniko-project/executor /kaniko/docker-credential-gcr /kaniko/docker-credential-gcr
-COPY --from=gcr.io/kaniko-project/executor /kaniko/docker-credential-ecr-login /kaniko/docker-credential-ecr-login
-COPY --from=gcr.io/kaniko-project/executor /kaniko/docker-credential-acr-env /kaniko/docker-credential-acr-env
-COPY --from=gcr.io/kaniko-project/executor /kaniko/.docker /kaniko/.docker
+COPY --from=kaniko /kaniko/executor /kaniko/executor
+COPY --from=kaniko /kaniko/docker-credential-gcr /kaniko/docker-credential-gcr
+COPY --from=kaniko /kaniko/docker-credential-ecr-login /kaniko/docker-credential-ecr-login
+COPY --from=kaniko /kaniko/docker-credential-acr-env /kaniko/docker-credential-acr-env
+COPY --from=kaniko /kaniko/.docker /kaniko/.docker
 
 # Generate latest ca-certificates
 RUN update-ca-certificates && \

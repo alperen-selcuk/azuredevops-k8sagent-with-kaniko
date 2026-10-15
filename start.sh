@@ -50,15 +50,24 @@ export VSO_AGENT_IGNORE="AZP_TOKEN,AZP_TOKEN_FILE"
 print_header "1. Determining matching Azure Pipelines agent..."
 
 # AZP_TOKEN'ı doğrudan kullan
+# AZP_AGENT_VERSION (RUNNER_VERSION build-arg) empty -> latest, otherwise the pinned version
+if [ -n "${AZP_AGENT_VERSION}" ]; then
+  AZP_AGENT_TOP=100
+  AZP_AGENT_FILTER=".value | map(select(.version == \"${AZP_AGENT_VERSION}\")) | .[0].downloadUrl"
+else
+  AZP_AGENT_TOP=1
+  AZP_AGENT_FILTER=".value[0].downloadUrl"
+fi
+
 AZP_AGENT_PACKAGES=$(curl -LsS \
     -u user:"${AZP_TOKEN}" \
     -H "Accept:application/json;" \
-    "${AZP_URL}/_apis/distributedtask/packages/agent?platform=${TARGETARCH}&top=1")
+    "${AZP_URL}/_apis/distributedtask/packages/agent?platform=${TARGETARCH}&top=${AZP_AGENT_TOP}")
 
-AZP_AGENT_PACKAGE_LATEST_URL=$(echo "${AZP_AGENT_PACKAGES}" | jq -r ".value[0].downloadUrl")
+AZP_AGENT_PACKAGE_LATEST_URL=$(echo "${AZP_AGENT_PACKAGES}" | jq -r "${AZP_AGENT_FILTER}")
 
 if [ -z "${AZP_AGENT_PACKAGE_LATEST_URL}" -o "${AZP_AGENT_PACKAGE_LATEST_URL}" == "null" ]; then
-  echo 1>&2 "error: could not determine a matching Azure Pipelines agent"
+  echo 1>&2 "error: could not determine a matching Azure Pipelines agent${AZP_AGENT_VERSION:+ (version ${AZP_AGENT_VERSION})}"
   echo 1>&2 "check that account "${AZP_URL}" is correct and the token is valid for that account"
   exit 1
 fi

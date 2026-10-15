@@ -8,12 +8,31 @@ Kubernetes üzerinde çalışan, Azure DevOps'a otomatik kayıt olan self-hosted
 
 ## Kurulum
 
-### 1. Azure DevOps hazırlığı
+### 1. Agent image'ını build et ve push et
+
+Deployment bu image'ı çekeceği için ilk adım bu.
+
+```bash
+docker build -t yourregistry/yourimage:<tag> .
+docker push yourregistry/yourimage:<tag>
+```
+
+Arm64 için: `--build-arg K8S_ARCH=arm64` ve `start.sh` içindeki `TARGETARCH=linux-arm64`.
+
+Sonra [kubernetes/deployment.yaml](kubernetes/deployment.yaml) içindeki `image` alanını güncelle:
+
+```yaml
+image: yourregistry/yourimage:<tag>
+```
+
+Registry private ise cluster'ın image çekebilmesi için `imagePullSecrets` de gerekir.
+
+### 2. Azure DevOps hazırlığı
 
 - Bir **Agent Pool** oluştur (Organization Settings → Agent pools).
 - **PAT** üret. Yetki: `Agent Pools (Read & manage)`.
 
-### 2. Namespace ve Secret
+### 3. Namespace ve Secret
 
 ```bash
 kubectl create namespace azagent
@@ -22,7 +41,7 @@ kubectl create namespace azagent
 
 Script sırasıyla Azure DevOps URL'ini (`https://dev.azure.com/<org>`), PAT'i, pool adını ve namespace'i (`azagent`) sorar.
 
-### 3. RBAC ve Deployment
+### 4. RBAC ve Deployment
 
 ```bash
 kubectl apply -f kubernetes/rbac.yaml
@@ -54,19 +73,4 @@ steps:
   displayName: Deploy
 ```
 
-Kaniko'nun registry'ye push edebilmesi için `/kaniko/.docker/config.json` içinde credential olmalı. Şablon: [docker-config.json](docker-config.json). Bunu bir Secret'tan mount edebilirsin.
-
-## Image'ı kendin build etmek
-
-```bash
-docker build -t yourregistry/yourimage:<tag> .
-docker push yourregistry/yourimage:<tag>
-```
-
-Arm64 için: `--build-arg K8S_ARCH=arm64` ve `start.sh` içindeki `TARGETARCH=linux-arm64`.
-
-Sonra [kubernetes/deployment.yaml](kubernetes/deployment.yaml) içindeki `image` alanını kendi image'ınla güncelle:
-
-```yaml
-image: yourregistry/yourimage:<tag>
-```
+Kaniko'nun registry'ye push edebilmesi için `/kaniko/.docker/config.json` içinde credential olmalı. Şablon: [docker-config.json](docker-config.json).
