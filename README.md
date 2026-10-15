@@ -6,6 +6,25 @@ Kubernetes üzerinde çalışan, Azure DevOps'a otomatik kayıt olan self-hosted
 - **kubectl** ve **helm** içerir, pod içinden ServiceAccount ile cluster'a deploy edebilir
 - Ayrıca `az cli`, `powershell`, `git`, `jq` hazır gelir
 
+## Agent image içeriği
+
+Base: `mcr.microsoft.com/dotnet/sdk:<DOTNET_SDK_VERSION>-jammy` (Ubuntu 22.04)
+
+| Araç | Sürüm | Build-arg | Not |
+|---|---|---|---|
+| .NET SDK | 8.0 | `DOTNET_SDK_VERSION` | Başka sürümler için pipeline'da `UseDotNet@2` |
+| Node.js + npm + corepack | 20 | `NODE_VERSION` | Next.js / Node projeleri |
+| JDK | 17 | - | `JAVA_HOME=/usr/lib/jvm/default-java`, SonarQube scanner için de gerekli |
+| Maven | 3.9 | `MAVEN_VERSION` | `MAVEN_HOME=/usr/share/maven` |
+| kubectl | latest stable | `KUBECTL_VERSION` | Pinlemek için `v1.x.y` |
+| helm | latest | `HELM_VERSION` | Pinlemek için `v3.x.y` |
+| Kaniko | latest | `KANIKO_VERSION` | Pinlemek için `v1.x.y` |
+| Azure Pipelines agent | latest | `RUNNER_VERSION` | Çalışma anında indirilir |
+| `az cli`, `powershell`, `git`, `jq`, `curl`, `unzip` | - | - | |
+| `build-essential`, `python3` | - | - | `node-gyp` gerektiren npm paketleri için |
+
+`dotnet-coverage` gibi global dotnet tool'lar için `~/.dotnet/tools` PATH'tedir. Agent açılışta `java`, `node`, `npm`, `maven`, `dotnet` capability'lerini otomatik kaydeder (task demand'leri için).
+
 ## Kurulum
 
 ### 1. Agent image'ını build et ve push et
