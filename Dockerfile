@@ -105,6 +105,23 @@ ENV SSL_CERT_DIR=/kaniko/ssl/certs
 ENV DOCKER_CONFIG=/kaniko/.docker/
 ENV DOCKER_CREDENTIAL_GCR_CONFIG=/kaniko/.config/gcloud/docker_credential_gcr_config.json
 
+# Code coverage tool used by the .NET pipelines
+RUN set -eux; \
+    dotnet tool install --global dotnet-coverage; \
+    dotnet-coverage --version
+
+# Pipelines that run UseDotNet@2 (e.g. 6.0) point DOTNET_ROOT at the agent tool cache,
+# which has no .NET 8 runtime, so the ~/.dotnet/tools apphost shim fails with
+# "You must install or update .NET". This wrapper (ahead of ~/.dotnet/tools in PATH)
+# runs the tool DLL with the image's own .NET 8 muxer and leaves DOTNET_ROOT untouched
+# for the child processes (dotnet test) it starts.
+RUN set -eux; \
+    dll="$(find /root/.dotnet/tools/.store/dotnet-coverage -name dotnet-coverage.dll | sort | tail -n1)"; \
+    test -n "$dll"; \
+    printf '#!/bin/sh\nexec /usr/share/dotnet/dotnet "%s" "$@"\n' "$dll" > /usr/local/bin/dotnet-coverage; \
+    chmod +x /usr/local/bin/dotnet-coverage; \
+    DOTNET_ROOT=/nonexistent dotnet-coverage --version
+
 # Copy Needed Files from Kaniko Image
 COPY --from=kaniko /kaniko/executor /kaniko/executor
 COPY --from=kaniko /kaniko/docker-credential-gcr /kaniko/docker-credential-gcr
